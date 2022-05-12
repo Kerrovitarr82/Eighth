@@ -1,10 +1,14 @@
 package com.example.eighth;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.SparseBooleanArray;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -17,8 +21,13 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.ShareActionProvider;
+import androidx.core.content.FileProvider;
 import androidx.core.view.MenuItemCompat;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -36,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<Uri> imageUris = new ArrayList<>();
     private ShareActionProvider shareActionProvider;
     private ListView lvFiles;
-    private String[] file_names = {"image1.png", "image2.png"};
+    private String[] file_names = {"image1.jpg", "image2.jpg"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
         sendMult = findViewById(R.id.sendMult);
         addPicBtn = findViewById(R.id.addPicBtn);
         addPicsBtn = findViewById(R.id.addPicsBtn);
-        lvFiles = (ListView) findViewById(R.id.lv_files);
+        lvFiles = findViewById(R.id.lv_files);
         lvFiles.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_list_item_multiple_choice, file_names);
@@ -188,6 +197,40 @@ public class MainActivity extends AppCompatActivity {
     private void setShareIntent(Intent intent) {
         if (shareActionProvider != null) {
             shareActionProvider.setShareIntent(intent);
+        }
+    }
+
+    public void onClick(View view) throws IOException {
+        SparseBooleanArray sbArray = lvFiles.getCheckedItemPositions();
+        ArrayList<Uri> images = new ArrayList<>();
+        Bitmap bm = BitmapFactory.decodeResource(getResources(), R.raw.image1);
+        File file = new File(getFilesDir(), "image1.jpg");
+        FileOutputStream  outputStream = new FileOutputStream(file);
+        bm.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+        outputStream.flush();
+        outputStream.close();
+        file = new File(getFilesDir(), "image2.jpg");
+        outputStream = new FileOutputStream(file);
+        bm = BitmapFactory.decodeResource(getResources(), R.raw.image2);
+        bm.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+        outputStream.flush();
+        outputStream.close();
+        for (int i = 0; i < sbArray.size(); ++i) {
+            int key = sbArray.keyAt(i);
+            if (sbArray.get(key)) {
+                File img = new File(getFilesDir(), file_names[key]);
+                Uri fileUri = FileProvider.getUriForFile(this, "com.example.eighth", img);
+                images.add(fileUri);
+            }
+        }
+        if (images.isEmpty()) {
+            Toast.makeText(getApplicationContext(), "Выберите файл", Toast.LENGTH_SHORT).show();
+        } else {
+            Intent intent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+            intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, images);
+            intent.setType("image/*");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            startActivity(intent);
         }
     }
 }
